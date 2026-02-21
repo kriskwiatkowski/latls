@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+      - name: Build
+        run: . $HOME/.cargo/env && cargo build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+      - name: Test (default)
+        run: . $HOME/.cargo/env && cargo test
+      - name: Test (webpki)
+        run: . $HOME/.cargo/env && cargo test --features webpki
+      - name: Test (native-pki)
+        run: . $HOME/.cargo/env && cargo test --features native-pki
+      - name: Test (native-pki + rsa)
+        run: . $HOME/.cargo/env && cargo test --features native-pki,rsa
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --component clippy
+      - name: Clippy
+        run: . $HOME/.cargo/env && cargo clippy -- -D warnings
+
+  no-std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --target thumbv7em-none-eabi
+      - name: Build (no_std)
+        run: . $HOME/.cargo/env && cargo build --target thumbv7em-none-eabi --no-default-features
