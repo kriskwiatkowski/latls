@@ -1,0 +1,30 @@
+[package]
+name = "psa-crypto"
+version = "0.12.0"
+authors = ["Parsec Project Contributors"]
+edition = "2018"
+description = "Wrapper around the PSA Cryptography API"
+readme = "README.md"
+keywords = ["psa", "crypto", "cryptography", "no_std"]
+categories = ["api-bindings", "external-ffi-bindings", "cryptography"]
+license = "Apache-2.0"
+repository = "https://github.com/parallaxsecond/rust-psa-crypto"
+rust-version = "1.66.0"
+
+[dependencies]
+psa-crypto-sys = { version = "0.12.0", default-features = false }
+log = "0.4.20"
+serde = { version = "1.0.115", features = ["derive"], default-features = false }
+zeroize = { version = "1.4.3", features = ["zeroize_derive"], default-features = false }
+
+[dev-dependencies]
+rsa = { version = "0.5.0", features = ["alloc"] }
+rand = "0.8.4"
+base64 = "0.12.3"
+
+[features]
+default = ["operations"]
+operations = ["psa-crypto-sys/operations", "interface"]
+interface = ["psa-crypto-sys/interface"]
+prefix = ["psa-crypto-sys/prefix"]
+std = []
