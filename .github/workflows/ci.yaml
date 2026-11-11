@@ -12,6 +12,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+      - name: Install native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake libclang-dev
       - name: Build
         run: . $HOME/.cargo/env && cargo build
 
@@ -21,16 +23,18 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+      - name: Install native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake libclang-dev
       - name: Test (default)
-        run: . $HOME/.cargo/env && cargo test
+        run: . $HOME/.cargo/env && cargo test -- --test-threads=1
       - name: Test (webpki)
-        run: . $HOME/.cargo/env && cargo test --features webpki
+        run: . $HOME/.cargo/env && cargo test --features webpki -- --test-threads=1
       - name: Test (native-pki)
-        run: . $HOME/.cargo/env && cargo test --features native-pki
+        run: . $HOME/.cargo/env && cargo test --features native-pki -- --test-threads=1
       - name: Test (native-pki + rsa)
-        run: . $HOME/.cargo/env && cargo test --features native-pki,rsa
+        run: . $HOME/.cargo/env && cargo test --features native-pki,rsa -- --test-threads=1
       - name: Test (all features)
-        run: . $HOME/.cargo/env && cargo test --all-features
+        run: . $HOME/.cargo/env && cargo test --all-features -- --test-threads=1
 
   clippy:
     runs-on: ubuntu-latest
@@ -38,6 +42,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --component clippy
+      - name: Install native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake libclang-dev
       - name: Clippy
         run: . $HOME/.cargo/env && cargo clippy -- -D warnings
 
@@ -47,5 +53,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --target thumbv7em-none-eabi
+      - name: Install native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake libclang-dev
       - name: Build (no_std)
         run: . $HOME/.cargo/env && cargo build --target thumbv7em-none-eabi --no-default-features

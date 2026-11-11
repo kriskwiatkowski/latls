@@ -2,13 +2,11 @@ use core::marker::PhantomData;
 
 use digest::{Digest, OutputSizeUser};
 use heapless::Vec;
-use p256::EncodedPoint;
-use p256::ecdh::EphemeralSecret;
-use p256::elliptic_curve::rand_core::RngCore;
 use typenum::Unsigned;
 
 use crate::ProtocolError;
 use crate::config::{ConnectConfig, TlsCipherSuite};
+use crate::ecdh::{EphemeralKey, P256_PUBLIC_KEY_LEN};
 use crate::extensions::extension_data::alpn::AlpnProtocolNameList;
 use crate::extensions::extension_data::key_share::{KeyShareClientHello, KeyShareEntry};
 use crate::extensions::extension_data::pre_shared_key::PreSharedKeyClientHello;
@@ -31,31 +29,33 @@ where
     pub(crate) config: &'config ConnectConfig<'config>,
     random: Random,
     cipher_suite: PhantomData<CipherSuite>,
-    pub(crate) secret: EphemeralSecret,
+    pub(crate) secret: EphemeralKey,
 }
 
 impl<'config, CipherSuite> ClientHello<'config, CipherSuite>
 where
     CipherSuite: TlsCipherSuite,
 {
-    pub fn new<CP>(config: &'config ConnectConfig<'config>, mut provider: CP) -> Self
+    pub fn new<CP>(config: &'config ConnectConfig<'config>, mut provider: CP) -> Result<Self, ProtocolError>
     where
         CP: CryptoBackend,
     {
+        use rand_core::RngCore;
         let mut random = [0; 32];
         provider.rng().fill_bytes(&mut random);
 
-        Self {
+        Ok(Self {
             config,
             random,
             cipher_suite: PhantomData,
-            secret: EphemeralSecret::random(&mut provider.rng()),
-        }
+            secret: EphemeralKey::generate()?,
+        })
     }
 
     pub(crate) fn encode(&self, buf: &mut CryptoBuffer<'_>) -> Result<(), ProtocolError> {
-        let public_key = EncodedPoint::from(&self.secret.public_key());
-        let public_key = public_key.as_ref();
+        let mut pub_key_buf = [0u8; P256_PUBLIC_KEY_LEN];
+        let pub_key_len = self.secret.public_key_bytes(&mut pub_key_buf)?;
+        let public_key = &pub_key_buf[..pub_key_len];
 
         buf.push_u16(LEGACY_VERSION)
             .map_err(|_| ProtocolError::EncodeError)?;

@@ -16,6 +16,7 @@ pub mod blocking;
 mod buffer;
 mod change_cipher_spec;
 mod cipher;
+mod ecdh;
 mod cipher_suites;
 mod common;
 mod config;
@@ -25,6 +26,8 @@ mod extensions;
 mod handshake;
 mod key_schedule;
 mod parse_buffer;
+#[cfg(feature = "std")]
+mod psa;
 pub mod read_buffer;
 mod record;
 mod record_reader;
