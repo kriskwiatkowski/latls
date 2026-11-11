@@ -6,8 +6,7 @@ use crate::extensions::extension_data::key_share::KeyShareEntry;
 use crate::extensions::messages::ServerHelloExtension;
 use crate::parse_buffer::ParseBuffer;
 use crate::{ProtocolError, unused};
-use p256::PublicKey;
-use p256::ecdh::{EphemeralSecret, SharedSecret};
+use crate::ecdh::{EphemeralKey, P256_SHARED_SECRET_LEN};
 
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -59,22 +58,22 @@ impl<'a> ServerHello<'a> {
         })
     }
 
-    /// Performs ECDH with the server's key share to derive the shared secret used in the handshake.
-    pub fn calculate_shared_secret(&self, secret: &EphemeralSecret) -> Option<SharedSecret> {
+    /// Performs ECDH with the server's key share, writing the raw shared secret into `output`.
+    /// Returns the number of bytes written, or `None` if the server key share is missing.
+    pub fn calculate_shared_secret(
+        &self,
+        secret: &EphemeralKey,
+        output: &mut [u8; P256_SHARED_SECRET_LEN],
+    ) -> Option<usize> {
         let server_key_share = self.key_share()?;
-        let server_public_key = PublicKey::from_sec1_bytes(server_key_share.opaque).ok()?;
-        Some(secret.diffie_hellman(&server_public_key))
+        secret.diffie_hellman(server_key_share.opaque, output).ok()
     }
 
     #[allow(dead_code)]
-    pub fn initialize_crypto_engine(&self, secret: &EphemeralSecret) -> Option<CryptoEngine> {
+    pub fn initialize_crypto_engine(&self, secret: &EphemeralKey) -> Option<CryptoEngine> {
         let server_key_share = self.key_share()?;
-
-        let group = server_key_share.group;
-
-        let server_public_key = PublicKey::from_sec1_bytes(server_key_share.opaque).ok()?;
-        let shared = secret.diffie_hellman(&server_public_key);
-
-        Some(CryptoEngine::new(group, shared))
+        let mut shared = [0u8; P256_SHARED_SECRET_LEN];
+        secret.diffie_hellman(server_key_share.opaque, &mut shared).ok()?;
+        Some(CryptoEngine::new(server_key_share.group, &shared))
     }
 }

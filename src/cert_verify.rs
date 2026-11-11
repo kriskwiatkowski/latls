@@ -182,7 +182,7 @@ fn verify_signature(
     if !certificate.entries.is_empty() {
         if let CertificateEntryRef::X509(certificate) = certificate.entries[0] {
             let cert = webpki::EndEntityCert::try_from(certificate).map_err(|e| {
-                warn!("ProtocolError loading cert: {:?}", e);
+                warn!("ProtocolError loading cert: {}", fmt_err!(e));
                 ProtocolError::DecodeError
             })?;
 
@@ -197,7 +197,7 @@ fn verify_signature(
                     verified = true;
                 }
                 Err(e) => {
-                    info!("ProtocolError verifying signature: {:?}", e);
+                    info!("ProtocolError verifying signature: {}", fmt_err!(e));
                 }
             }
         }
@@ -218,7 +218,7 @@ fn verify_certificate(
     let mut host_verified = false;
     if let Certificate::X509(ca) = ca {
         let trust = webpki::TrustAnchor::try_from_cert_der(ca).map_err(|e| {
-            warn!("ProtocolError loading CA: {:?}", e);
+            warn!("ProtocolError loading CA: {}", fmt_err!(e));
             ProtocolError::DecodeError
         })?;
 
@@ -227,7 +227,7 @@ fn verify_certificate(
         if !certificate.entries.is_empty() {
             if let CertificateEntryRef::X509(certificate) = certificate.entries[0] {
                 let cert = webpki::EndEntityCert::try_from(certificate).map_err(|e| {
-                    warn!("ProtocolError loading cert: {:?}", e);
+                    warn!("ProtocolError loading cert: {}", fmt_err!(e));
                     ProtocolError::DecodeError
                 })?;
 
@@ -247,7 +247,7 @@ fn verify_certificate(
                 ) {
                     Ok(()) => verified = true,
                     Err(e) => {
-                        warn!("ProtocolError verifying certificate: {:?}", e);
+                        warn!("ProtocolError verifying certificate: {}", fmt_err!(e));
                     }
                 }
 
@@ -255,12 +255,12 @@ fn verify_certificate(
                     match webpki::SubjectNameRef::try_from_ascii(server_name.as_bytes()) {
                         Ok(subject) => match cert.verify_is_valid_for_subject_name(subject) {
                             Ok(()) => host_verified = true,
-                            Err(e) => {
-                                warn!("ProtocolError verifying host: {:?}", e);
+                            Err(_) => {
+                                warn!("ProtocolError verifying host");
                             }
                         },
-                        Err(e) => {
-                            warn!("ProtocolError verifying host: {:?}", e);
+                        Err(_) => {
+                            warn!("ProtocolError parsing server name");
                         }
                     }
                 }

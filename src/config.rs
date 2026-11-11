@@ -13,6 +13,8 @@ use ecdsa::elliptic_curve::SecretKey;
 use generic_array::ArrayLength;
 use heapless::Vec;
 use p256::ecdsa::SigningKey;
+#[cfg(feature = "std")]
+use psa_crypto::types::algorithm::Hash as PsaHash;
 use rand_core::CryptoRngCore;
 pub use sha2::{Sha256, Sha384};
 use typenum::{Sum, U10, U12, U16, U32};
@@ -32,6 +34,8 @@ type LabelBuffer<CipherSuite> = Sum<
 /// Associates a cipher, key/IV lengths, hash algorithm, and label buffer size for a TLS 1.3 cipher suite.
 pub trait TlsCipherSuite {
     const CODE_POINT: u16;
+    #[cfg(feature = "std")]
+    const PSA_HASH: PsaHash;
     type Cipher: KeyInit<KeySize = Self::KeyLen> + AeadInPlace<NonceSize = Self::IvLen>;
     type KeyLen: ArrayLength<u8>;
     type IvLen: ArrayLength<u8>;
@@ -43,6 +47,8 @@ pub trait TlsCipherSuite {
 pub struct Aes128GcmSha256;
 impl TlsCipherSuite for Aes128GcmSha256 {
     const CODE_POINT: u16 = CipherSuite::TlsAes128GcmSha256 as u16;
+    #[cfg(feature = "std")]
+    const PSA_HASH: PsaHash = PsaHash::Sha256;
     type Cipher = Aes128Gcm;
     type KeyLen = U16;
     type IvLen = U12;
@@ -54,6 +60,8 @@ impl TlsCipherSuite for Aes128GcmSha256 {
 pub struct Aes256GcmSha384;
 impl TlsCipherSuite for Aes256GcmSha384 {
     const CODE_POINT: u16 = CipherSuite::TlsAes256GcmSha384 as u16;
+    #[cfg(feature = "std")]
+    const PSA_HASH: PsaHash = PsaHash::Sha384;
     type Cipher = Aes256Gcm;
     type KeyLen = U32;
     type IvLen = U12;

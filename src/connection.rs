@@ -18,7 +18,7 @@ use embedded_io_async::{Read as AsyncRead, Write as AsyncWrite};
 use crate::application_data::ApplicationData;
 use crate::buffer::CryptoBuffer;
 use digest::generic_array::typenum::Unsigned;
-use p256::ecdh::EphemeralSecret;
+use crate::ecdh::{EphemeralKey, P256_SHARED_SECRET_LEN};
 use signature::SignerMut;
 
 use crate::content_types::ContentType;
@@ -134,7 +134,7 @@ where
 {
     // Saved pre-master transcript hash used for Finished after a certificate exchange
     traffic_hash: Option<CipherSuite::Hash>,
-    secret: Option<EphemeralSecret>,
+    secret: Option<EphemeralKey>,
     certificate_request: Option<CertificateRequest>,
 }
 
@@ -398,7 +398,7 @@ where
 {
     key_schedule.initialize_early_secret(config.psk.as_ref().map(|p| p.0))?;
     let (write_key_schedule, read_key_schedule) = key_schedule.as_split();
-    let client_hello = ClientRecord::client_hello(config, crypto_provider);
+    let client_hello = ClientRecord::client_hello(config, crypto_provider)?;
     let slice = tx_buf.write_record(&client_hello, write_key_schedule, Some(read_key_schedule))?;
 
     if let ClientRecord::Handshake(ClientHandshake::ClientHello(client_hello), _) = client_hello {
@@ -425,10 +425,11 @@ where
                     .secret
                     .take()
                     .ok_or(ProtocolError::InvalidHandshake)?;
-                let shared = server_hello
-                    .calculate_shared_secret(&secret)
+                let mut shared = [0u8; P256_SHARED_SECRET_LEN];
+                let shared_len = server_hello
+                    .calculate_shared_secret(&secret, &mut shared)
                     .ok_or(ProtocolError::InvalidKeyShare)?;
-                key_schedule.initialize_handshake_secret(shared.raw_secret_bytes())?;
+                key_schedule.initialize_handshake_secret(&shared[..shared_len])?;
                 Ok(State::ServerVerify)
             }
             _ => Err(ProtocolError::InvalidHandshake),

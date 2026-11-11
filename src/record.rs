@@ -88,14 +88,17 @@ where
         }
     }
 
-    pub fn client_hello<CP>(config: &'config ConnectConfig<'config>, provider: &mut CP) -> Self
+    pub fn client_hello<CP>(
+        config: &'config ConnectConfig<'config>,
+        provider: &mut CP,
+    ) -> Result<Self, ProtocolError>
     where
         CP: CryptoBackend,
     {
-        ClientRecord::Handshake(
-            ClientHandshake::ClientHello(ClientHello::new(config, provider)),
+        Ok(ClientRecord::Handshake(
+            ClientHandshake::ClientHello(ClientHello::new(config, provider)?),
             false,
-        )
+        ))
     }
 
     pub fn close_notify(opened: bool) -> Self {
