@@ -603,11 +603,7 @@ mod early_data {
                 let privkey =
                     load_private_key(&test_dir.join("fixtures").join("leaf-server-key.pem"));
 
-                let mut config = rustls::ServerConfig::builder()
-                    .with_cipher_suites(rustls::ALL_CIPHER_SUITES)
-                    .with_kx_groups(&rustls::ALL_KX_GROUPS)
-                    .with_protocol_versions(versions)
-                    .unwrap()
+                let mut config = rustls::ServerConfig::builder_with_protocol_versions(versions)
                     .with_no_client_auth()
                     .with_single_cert(certs, privkey)
                     .unwrap();
@@ -668,9 +664,9 @@ mod client_cert {
     use p256::ecdsa::SigningKey;
     use rand::rngs::OsRng;
     use rand_core::CryptoRngCore;
-    use rustls::server::AllowAnyAuthenticatedClient;
+    use rustls::server::WebPkiClientVerifier;
     use std::net::SocketAddr;
-    use std::sync::Once;
+    use std::sync::{Arc, Once};
 
     static LOG_INIT: Once = Once::new();
     static INIT: Once = Once::new();
@@ -706,18 +702,16 @@ mod client_cert {
                     load_private_key(&test_dir.join("fixtures").join("leaf-server-key.pem"));
 
                 let mut client_auth_roots = rustls::RootCertStore::empty();
-                for root in ca.iter() {
+                for root in ca.into_iter() {
                     client_auth_roots.add(root).unwrap()
                 }
 
-                let client_cert_verifier = AllowAnyAuthenticatedClient::new(client_auth_roots);
+                let client_cert_verifier = WebPkiClientVerifier::builder(Arc::new(client_auth_roots))
+                    .build()
+                    .unwrap();
 
-                let config = rustls::ServerConfig::builder()
-                    .with_cipher_suites(rustls::ALL_CIPHER_SUITES)
-                    .with_kx_groups(&rustls::ALL_KX_GROUPS)
-                    .with_protocol_versions(versions)
-                    .unwrap()
-                    .with_client_cert_verifier(client_cert_verifier.boxed())
+                let config = rustls::ServerConfig::builder_with_protocol_versions(versions)
+                    .with_client_cert_verifier(client_cert_verifier)
                     .with_single_cert(certs, privkey)
                     .unwrap();
 
@@ -948,10 +942,10 @@ mod native_pki {
     use p256::SecretKey;
     use p256::ecdsa::{DerSignature, SigningKey};
     use rand_core::OsRng;
-    use rustls::server::AllowAnyAnonymousOrAuthenticatedClient;
+    use rustls::server::WebPkiClientVerifier;
     use signature::SignerMut;
     use std::net::SocketAddr;
-    use std::sync::Once;
+    use std::sync::{Arc, Once};
     use std::time::SystemTime;
 
     static LOG_INIT: Once = Once::new();
@@ -1028,19 +1022,17 @@ mod native_pki {
                 );
 
                 let mut client_auth_roots = rustls::RootCertStore::empty();
-                for root in ca.iter() {
+                for root in ca.into_iter() {
                     client_auth_roots.add(root).unwrap()
                 }
 
-                let client_cert_verifier =
-                    AllowAnyAnonymousOrAuthenticatedClient::new(client_auth_roots);
+                let client_cert_verifier = WebPkiClientVerifier::builder(Arc::new(client_auth_roots))
+                    .allow_unauthenticated()
+                    .build()
+                    .unwrap();
 
-                let config = rustls::ServerConfig::builder()
-                    .with_cipher_suites(rustls::ALL_CIPHER_SUITES)
-                    .with_kx_groups(&rustls::ALL_KX_GROUPS)
-                    .with_protocol_versions(versions)
-                    .unwrap()
-                    .with_client_cert_verifier(client_cert_verifier.boxed())
+                let config = rustls::ServerConfig::builder_with_protocol_versions(versions)
+                    .with_client_cert_verifier(client_cert_verifier)
                     .with_single_cert(certs, privkey)
                     .unwrap();
 
@@ -1153,12 +1145,12 @@ mod native_pki {
         };
         use rand_core::{CryptoRngCore, OsRng};
         use rsa::pkcs8::DecodePrivateKey;
-        use rustls::server::AllowAnyAnonymousOrAuthenticatedClient;
+        use rustls::server::WebPkiClientVerifier;
         use sha2::{Digest, Sha256};
         use signature::RandomizedSigner;
         use signature::SignerMut;
         use std::net::SocketAddr;
-        use std::sync::Once;
+        use std::sync::{Arc, Once};
         use std::time::SystemTime;
 
         static LOG_INIT: Once = Once::new();
@@ -1250,19 +1242,18 @@ mod native_pki {
                     );
 
                     let mut client_auth_roots = rustls::RootCertStore::empty();
-                    for root in ca.iter() {
+                    for root in ca.into_iter() {
                         client_auth_roots.add(root).unwrap()
                     }
 
                     let client_cert_verifier =
-                        AllowAnyAnonymousOrAuthenticatedClient::new(client_auth_roots);
+                        WebPkiClientVerifier::builder(Arc::new(client_auth_roots))
+                            .allow_unauthenticated()
+                            .build()
+                            .unwrap();
 
-                    let config = rustls::ServerConfig::builder()
-                        .with_cipher_suites(rustls::ALL_CIPHER_SUITES)
-                        .with_kx_groups(&rustls::ALL_KX_GROUPS)
-                        .with_protocol_versions(versions)
-                        .unwrap()
-                        .with_client_cert_verifier(client_cert_verifier.boxed())
+                    let config = rustls::ServerConfig::builder_with_protocol_versions(versions)
+                        .with_client_cert_verifier(client_cert_verifier)
                         .with_single_cert(certs, privkey)
                         .unwrap();
 
