@@ -29,6 +29,8 @@ jobs:
         run: . $HOME/.cargo/env && cargo test --features native-pki
       - name: Test (native-pki + rsa)
         run: . $HOME/.cargo/env && cargo test --features native-pki,rsa
+      - name: Test (all features)
+        run: . $HOME/.cargo/env && cargo test --all-features
 
   clippy:
     runs-on: ubuntu-latest

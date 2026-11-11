@@ -373,3 +373,28 @@ pub fn run_with_config(mut listener: TcpListener, config: rustls::ServerConfig) 
         }
     }
 }
+
+/// `defmt` requires exactly one `#[defmt::global_logger]` linked into the
+/// binary; this integration test binary links `latls` built with the
+/// `defmt` feature (under `--all-features`), so it needs its own no-op
+/// logger to satisfy the linker.
+#[cfg(feature = "defmt")]
+#[defmt::global_logger]
+struct NoopLogger;
+
+#[cfg(feature = "defmt")]
+unsafe impl defmt::Logger for NoopLogger {
+    fn acquire() {}
+    unsafe fn flush() {}
+    unsafe fn release() {}
+    unsafe fn write(_bytes: &[u8]) {}
+}
+
+#[cfg(feature = "defmt")]
+defmt::timestamp!("{=u32}", 0);
+
+#[cfg(feature = "defmt")]
+#[defmt::panic_handler]
+fn defmt_panic() -> ! {
+    panic!("defmt panic")
+}
