@@ -165,6 +165,23 @@ macro_rules! error {
     };
 }
 
+/// Wraps a value that implements `core::fmt::Display` but not `defmt::Format`
+/// (e.g. error types from third-party crates), so it can be passed to a log
+/// macro that may expand to both `log` and `defmt` calls.
+#[cfg(feature = "defmt")]
+macro_rules! fmt_err {
+    ($e:expr) => {
+        ::defmt::Display2Format(&$e)
+    };
+}
+
+#[cfg(not(feature = "defmt"))]
+macro_rules! fmt_err {
+    ($e:expr) => {
+        &$e
+    };
+}
+
 #[cfg(feature = "defmt")]
 macro_rules! unwrap {
     ($($x:tt)*) => {
@@ -220,4 +237,29 @@ impl<T, E> Try for Result<T, E> {
     fn into_result(self) -> Self {
         self
     }
+}
+
+/// `defmt` requires exactly one `#[defmt::global_logger]` to be linked into
+/// the binary. There's no embedded target here, so this is a no-op logger
+/// that just satisfies the linker when running `cargo test` with the
+/// `defmt` feature enabled.
+#[cfg(all(test, feature = "defmt"))]
+#[defmt::global_logger]
+struct NoopLogger;
+
+#[cfg(all(test, feature = "defmt"))]
+unsafe impl defmt::Logger for NoopLogger {
+    fn acquire() {}
+    unsafe fn flush() {}
+    unsafe fn release() {}
+    unsafe fn write(_bytes: &[u8]) {}
+}
+
+#[cfg(all(test, feature = "defmt"))]
+defmt::timestamp!("{=u32}", 0);
+
+#[cfg(all(test, feature = "defmt"))]
+#[defmt::panic_handler]
+fn defmt_panic() -> ! {
+    panic!("defmt panic")
 }

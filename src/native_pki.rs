@@ -389,7 +389,7 @@ fn verify_certificate(
 
                 let verifying_key =
                     VerifyingKey::<Sha256>::from_pkcs1_der(ca_public_key).map_err(|e| {
-                        error!("VerifyingKey: {}", e);
+                        error!("VerifyingKey: {}", fmt_err!(e));
                         ProtocolError::DecodeError
                     })?;
 
@@ -400,7 +400,7 @@ fn verify_certificate(
                         .ok_or(ProtocolError::ParseError(ParseError::InvalidData))?,
                 )
                 .map_err(|e| {
-                    error!("Signature: {}", e);
+                    error!("Signature: {}", fmt_err!(e));
                     ProtocolError::ParseError(ParseError::InvalidData)
                 })?;
 

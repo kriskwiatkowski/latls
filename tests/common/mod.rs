@@ -299,24 +299,30 @@ impl Connection {
     }
 }
 
-pub fn load_certs(filename: &PathBuf) -> Vec<rustls::Certificate> {
+pub fn load_certs(filename: &PathBuf) -> Vec<rustls::pki_types::CertificateDer<'static>> {
     let certfile = fs::File::open(filename).expect("cannot open certificate file");
     let mut reader = BufReader::new(certfile);
     rustls_pemfile::certs(&mut reader)
         .unwrap()
-        .iter()
-        .map(|v| rustls::Certificate(v.clone()))
+        .into_iter()
+        .map(rustls::pki_types::CertificateDer::from)
         .collect()
 }
 
-pub fn load_private_key(filename: &PathBuf) -> rustls::PrivateKey {
+pub fn load_private_key(filename: &PathBuf) -> rustls::pki_types::PrivateKeyDer<'static> {
     let keyfile = fs::File::open(filename).expect("cannot open private key file");
     let mut reader = BufReader::new(keyfile);
     loop {
         match rustls_pemfile::read_one(&mut reader).expect("cannot parse private key .pem file") {
-            Some(rustls_pemfile::Item::RSAKey(key)) => return rustls::PrivateKey(key),
-            Some(rustls_pemfile::Item::PKCS8Key(key)) => return rustls::PrivateKey(key),
-            Some(rustls_pemfile::Item::ECKey(key)) => return rustls::PrivateKey(key),
+            Some(rustls_pemfile::Item::RSAKey(key)) => {
+                return rustls::pki_types::PrivateKeyDer::Pkcs1(key.into());
+            }
+            Some(rustls_pemfile::Item::PKCS8Key(key)) => {
+                return rustls::pki_types::PrivateKeyDer::Pkcs8(key.into());
+            }
+            Some(rustls_pemfile::Item::ECKey(key)) => {
+                return rustls::pki_types::PrivateKeyDer::Sec1(key.into());
+            }
             None => break,
             _ => {}
         }
@@ -333,11 +339,7 @@ pub fn run(listener: TcpListener) {
     let test_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
     let certs = load_certs(&test_dir.join("fixtures").join("leaf-server.pem"));
     let privkey = load_private_key(&test_dir.join("fixtures").join("leaf-server-key.pem"));
-    let config = rustls::ServerConfig::builder()
-        .with_cipher_suites(rustls::ALL_CIPHER_SUITES)
-        .with_kx_groups(&rustls::ALL_KX_GROUPS)
-        .with_protocol_versions(versions)
-        .unwrap()
+    let config = rustls::ServerConfig::builder_with_protocol_versions(versions)
         .with_no_client_auth()
         .with_single_cert(certs, privkey)
         .unwrap();
@@ -370,4 +372,29 @@ pub fn run_with_config(mut listener: TcpListener, config: rustls::ServerConfig) 
             }
         }
     }
+}
+
+/// `defmt` requires exactly one `#[defmt::global_logger]` linked into the
+/// binary; this integration test binary links `latls` built with the
+/// `defmt` feature (under `--all-features`), so it needs its own no-op
+/// logger to satisfy the linker.
+#[cfg(feature = "defmt")]
+#[defmt::global_logger]
+struct NoopLogger;
+
+#[cfg(feature = "defmt")]
+unsafe impl defmt::Logger for NoopLogger {
+    fn acquire() {}
+    unsafe fn flush() {}
+    unsafe fn release() {}
+    unsafe fn write(_bytes: &[u8]) {}
+}
+
+#[cfg(feature = "defmt")]
+defmt::timestamp!("{=u32}", 0);
+
+#[cfg(feature = "defmt")]
+#[defmt::panic_handler]
+fn defmt_panic() -> ! {
+    panic!("defmt panic")
 }
